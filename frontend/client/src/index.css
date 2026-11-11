@@ -1,0 +1,55 @@
+:root {
+  font-family: 'Segoe UI', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  color: #f5f7fb;
+  background: #050505;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  --bg: #050505;
+  --surface: #111214;
+  --surface-raised: #181a1d;
+  --surface-soft: #121316;
+  --text: #f5f7fb;
+  --muted: #a8b1c1;
+  --subtle: #7d899d;
+  --border: #33363d;
+  --border-strong: #555a64;
+  --blue: #0844f5;
+  --blue-hover: #2159ff;
+  --mint: #63e0b4;
+  --mint-soft: #17372f;
+  --danger: #ff8d95;
+  --danger-bg: #3b2028;
+  --mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html { min-width: 320px; min-height: 100%; background: var(--bg); }
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  color: var(--text);
+  background: var(--bg);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+button, input { font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+a { color: inherit; }
+button:focus-visible, a:focus-visible, input:focus-visible, summary:focus-visible {
+  outline: 3px solid rgba(99, 224, 180, 0.9);
+  outline-offset: 3px;
+}
+
+::selection { color: #07110e; background: var(--mint); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}

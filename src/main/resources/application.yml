@@ -1,0 +1,62 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: campuscode-api
+  mvc:
+    async:
+      request-timeout: 30m
+  config:
+    import: optional:file:.env[.properties]
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5433/campuscode}
+    username: ${DATABASE_USERNAME:campuscode}
+    password: ${DATABASE_PASSWORD:campuscode_dev_only}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+  ai:
+    google:
+      genai:
+        api-key: ${GEMINI_API_KEY:}
+        chat:
+          options:
+            model: ${GEMINI_MODEL:gemini-3.5-flash-lite}
+            temperature: 0.1
+            response-mime-type: application/json
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:true}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS:true}
+
+management:
+  health:
+    mail:
+      enabled: ${MAIL_HEALTH_ENABLED:false}
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+campuscode:
+  evaluation:
+    from-email: ${MAIL_FROM:}
+  cognee:
+    base-url: ${COGNEE_BASE_URL:http://localhost:8000}
+    connect-timeout: 10s
+    read-timeout: 20m
+  worker:
+    threads: ${CAMPUSCODE_WORKER_THREADS:2}
+
+logging:
+  pattern:
+    console: ${LOGGING_PATTERN:%green(%d{HH:mm:ss.SSS}) %blue(%-5level) %red([%thread]) %yellow(%logger{15}) - %msg%n}
