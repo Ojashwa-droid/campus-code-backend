@@ -1,6 +1,6 @@
 # CampusCode Local Cognee MVP
 
-CampusCode accepts a public GitHub repository, uses local Cognee to build its code knowledge graph, retrieves repository passages, and evaluates the repository through Spring AI with Gemini. Job history and reports are stored in local PostgreSQL. Cognee does retrieval only during evaluation; Gemini generates the scorecard.
+CampusCode accepts a public GitHub repository, uses local Cognee to build its isolated code knowledge graph, retrieves repository passages and relevant graph neighborhoods, and evaluates the repository through Spring AI with Gemini. Job history, reports, and the exact evidence bundle sent to Gemini are stored in local PostgreSQL. Cognee retrieves; Gemini generates the scorecard.
 
 ## Requirements
 
@@ -11,7 +11,7 @@ CampusCode accepts a public GitHub repository, uses local Cognee to build its co
 
 ## Configure local services
 
-Copy `.env.example` to `.env`, then set `GEMINI_API_KEY` and a local `POSTGRES_PASSWORD`/`DATABASE_PASSWORD`. PostgreSQL is published on localhost port 5433 because port 5432 is commonly occupied by an existing local PostgreSQL installation. Compose passes the Gemini key to Cognee for graph extraction, and Spring Boot reads the same `.env` when started from the project directory. Do not commit `.env`.
+Copy `.env.example` to `.env`, then set `GEMINI_API_KEY` and a local `POSTGRES_PASSWORD`/`DATABASE_PASSWORD`. Keep the Cognee backend login (`COGNEE_USERNAME`/`COGNEE_PASSWORD`) aligned with the Cognee default account values (`DEFAULT_USER_EMAIL`/`DEFAULT_USER_PASSWORD`). PostgreSQL is published on localhost port 5433 because port 5432 is commonly occupied by an existing local PostgreSQL installation. Compose passes the Gemini key to Cognee for graph extraction, and Spring Boot reads the same `.env` when started from the project directory. Do not commit `.env`.
 
 Start Cognee and PostgreSQL:
 
@@ -21,7 +21,7 @@ Invoke-RestMethod http://localhost:8000/health
 docker compose ps
 ```
 
-Cognee uses local FastEmbed embeddings, Kuzu graph storage, and LanceDB vector storage. Its data is retained in the `cognee_storage` volume. PostgreSQL job and report history is retained in `campuscode_postgres`.
+Cognee uses local FastEmbed embeddings, Kuzu graph storage, and LanceDB vector storage. Backend access control gives datasets separate graph/vector stores and requires a bearer token; Spring obtains one using the configured local Cognee account. Its data is retained in the `cognee_storage` volume. PostgreSQL job and report history is retained in `campuscode_postgres`.
 
 Start the API from the project root so it can load `.env`:
 
@@ -79,7 +79,17 @@ GET /api/repositories/evaluations/{evaluationId}
 GET /api/repositories/ingestions/{ingestionId}/report
 ```
 
-Each dimension includes a rationale and citations with a file path, line range, and excerpt. The API checks that the cited evidence ID exists, the excerpt is present in the retrieved passage, and the path matches Cognee source metadata. A dimension without verifiable evidence is returned as score 0 with an insufficient-evidence rationale and no citations. Line ranges are syntax-checked but are supplied by the model because Cognee's retrieved chunks do not consistently expose source line offsets. If an email and SMTP configuration were supplied, CampusCode sends a notification after report persistence; email delivery failure does not invalidate the report.
+Each dimension includes a score rationale, evidence-backed strengths, areas for improvement, and citations. Citation line ranges must be present in Cognee source metadata; unsupported ranges and claims are omitted. A dimension without verifiable evidence is returned as score 0 with an insufficient-evidence rationale and no citations. The exact evidence and bounded graph neighborhood provided to Gemini are available separately:
+
+```http
+GET /api/repositories/ingestions/{ingestionId}/report/evidence
+```
+
+The existing report and status routes remain available. If an email and SMTP configuration were supplied, CampusCode sends a notification after report persistence; email delivery failure does not invalidate the report.
+
+Gemini receives a deduplicated, dimension-balanced evidence bundle with a default conservative estimated input ceiling of 40,000 tokens. Source and test files are prioritized over documentation; passages and graph descriptions are capped. Tune the budget and retrieval caps with `EVALUATION_CONTEXT_MAX_TOKENS`, `EVALUATION_CONTEXT_CHARS_PER_TOKEN`, `EVALUATION_CONTEXT_MAX_EVIDENCE_PER_DIMENSION`, `EVALUATION_CONTEXT_MAX_EVIDENCE_CHARS`, `EVALUATION_CONTEXT_MAX_GRAPH_FACTS`, and `EVALUATION_CONTEXT_MAX_GRAPH_DESCRIPTION_CHARS`. The estimate is character-based with a code-heavy safety factor, not Gemini's exact tokenizer. Logs include the estimate, selected/omitted counts, per-dimension coverage, truncation state, and evidence discard counts. Cognee result audit logs include each candidate's path, line range, content length, and whether it lacks citation metadata or belongs outside the repository. The evidence endpoint returns the exact bounded payload sent to Gemini, including evidence for failed generations when retrieval already completed.
+
+For a temporary content-level Cognee audit, set `COGNEE_RETRIEVAL_AUDIT_CONTENT=true` and `CAMPUSCODE_EVALUATION_LOG_LEVEL=DEBUG` in `.env`, then restart Spring Boot. The logs include bounded content previews and a clipped raw response (default preview 500 characters; tune with `COGNEE_RETRIEVAL_AUDIT_PREVIEW_CHARS`). Repository code can contain secrets, so turn content auditing back off after debugging. Graph facts, including Markdown-derived facts, are explicitly treated as non-citable supporting context and cannot replace source-code/test passages. If no citation-ready source-code passages survive parsing, the evaluation now fails with a diagnostic instead of saving a misleading all-zero report as `COMPLETED`.
 
 ### Evidence search
 
@@ -159,7 +169,7 @@ Open the Vite URL printed in the terminal. The development server proxies `/api`
 ## Future work
 
 - Add an explicit repository refresh/re-ingestion operation so newer GitHub commits can be indexed and evaluated. Preserve prior ingestion versions and their evaluation reports rather than overwriting historical results.
-- Fix Cognee graph mixing across repository datasets. The current Compose setup explicitly sets `ENABLE_BACKEND_ACCESS_CONTROL=false`, which uses shared graph/vector stores for local single-user mode. Enable per-dataset isolation, add the authentication CampusCode needs for Cognee calls, and verify graph/search isolation. Back up the Cognee volume and re-ingest each repository after switching modes; Cognee does not automatically migrate the existing shared graph into per-dataset stores.
+- Build the repository graph visualization into the CampusCode frontend after the report retrieval/evaluation work is stable.
 
 See [RUNNING_THE_APPLICATION.md](RUNNING_THE_APPLICATION.md) for the complete Windows local setup and run instructions.
 

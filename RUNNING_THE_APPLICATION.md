@@ -1,7 +1,6 @@
 # Running CampusCode Locally (Windows)
 
-This guide covers the current local setup: Spring Boot, PostgreSQL, Cognee, the Cognee UI, and Mailpit. 
-It reflects the current configuration, including the known shared Cognee graph behavior described under Future Work in the README.
+This guide covers the local setup: Spring Boot, PostgreSQL, Cognee, the Cognee UI, and Mailpit.
 
 ## 1. Prerequisites
 
@@ -42,6 +41,7 @@ MAIL_SMTP_STARTTLS=false
 ```
 
 The `.env` file is local configuration and must not be committed.
+Keep `COGNEE_USERNAME`/`COGNEE_PASSWORD` identical to `DEFAULT_USER_EMAIL`/`DEFAULT_USER_PASSWORD`; Spring uses this local Cognee account to authenticate its REST calls.
 
 ## 3. Start Cognee and PostgreSQL
 
@@ -55,6 +55,7 @@ docker compose ps
 This starts PostgreSQL on `localhost:5433` and Cognee on `localhost:8000`. 
 Cognee uses local FastEmbed embeddings, Kuzu graph storage, and LanceDB vector storage. 
 Its files persist in the `cognee_storage` Docker volume; PostgreSQL persists in `campuscode_postgres`.
+Cognee is configured for per-dataset graph/vector isolation and requires authentication. Spring logs in as the configured default Cognee user before calling its API. Existing shared-store data is not migrated when switching to isolation; the files remain in the volume, but re-ingest repositories before relying on evaluation or graph views. Do not run `docker compose down -v` as a migration step.
 
 Check Cognee health and PostgreSQL readiness:
 
@@ -71,11 +72,7 @@ The Cognee API docs are at <http://localhost:8000/docs>.
 docker compose --profile ui up -d cognee-ui
 ```
 
-Open <http://localhost:3000>, then use **Datasets** and **Graph** to inspect Cognee data. 
-The current Compose setting disables backend access control, so the graph database is shared between datasets; 
-records from different repositories may appear together in the graph view. 
-We plan to enable dataset isolation and wire authentication as a separate change. 
-Do not delete/recreate data as a workaround.
+Open <http://localhost:3000>, sign in using the configured Cognee default account, then use **Datasets** and **Graph** to inspect data. Per-dataset storage prevents graph traversal from mixing repository datasets.
 
 ## 5. Start Mailpit
 
@@ -153,7 +150,21 @@ GET  http://localhost:8080/api/repositories/ingestions/{ingestionId}/report
 ```
 
 The scorecard rates architecture, maintainability, testing, reliability, security, and performance/scalability. 
-Citations include evidence excerpts and repository paths.
+Citations include evidence excerpts and repository paths. The report also includes strengths, areas for improvement, and a score explanation for every dimension. The exact context sent to Gemini can be inspected with:
+
+```http
+GET http://localhost:8080/api/repositories/ingestions/{ingestionId}/report/evidence
+```
+
+Retrieval audit logs report each Cognee result's repository-relative path, line range, content length, and citation discard reason. If you need to inspect the actual bounded excerpts and clipped raw Cognee response, add these to `.env` and restart Spring Boot:
+
+```properties
+COGNEE_RETRIEVAL_AUDIT_CONTENT=true
+COGNEE_RETRIEVAL_AUDIT_PREVIEW_CHARS=500
+CAMPUSCODE_EVALUATION_LOG_LEVEL=DEBUG
+```
+
+Turn content auditing back off after debugging because repository code may contain secrets. Markdown graph facts remain supporting context only. An evaluation with no citation-ready source-code passages now fails with a diagnostic instead of being saved as a completed zero-score report.
 
 ## 9. Verify the email notification
 

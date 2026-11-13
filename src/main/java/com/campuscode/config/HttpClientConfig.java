@@ -15,13 +15,17 @@ import org.springframework.beans.factory.annotation.Value;
 @EnableConfigurationProperties(CogneeProperties.class)
 public class HttpClientConfig {
     @Bean
-    RestClient cogneeRestClient(CogneeProperties properties) {
+    RestClient cogneeRestClient(CogneeProperties properties, CogneeTokenProvider tokenProvider) {
         var factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(properties.connectTimeout());
         factory.setReadTimeout(properties.readTimeout());
         return RestClient.builder()
                 .baseUrl(properties.baseUrl())
                 .requestFactory(factory)
+                .requestInterceptor((request, body, execution) -> {
+                    request.getHeaders().setBearerAuth(tokenProvider.getToken());
+                    return execution.execute(request, body);
+                })
                 .build();
     }
 

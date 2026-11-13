@@ -81,7 +81,7 @@ class EvaluationServiceStreamTest {
         ChatClient.Builder builder = mock(ChatClient.Builder.class);
         when(builder.build()).thenReturn(mock(ChatClient.class));
         return new EvaluationService(mock(RestClient.class), builder, ingestions, evaluations, mapper,
-                worker, hub, mock(JavaMailSender.class), "", "");
+                worker, hub, mock(JavaMailSender.class), "", "", 40000, 3, 4, 4000, 36, 500);
     }
 
     private static IngestionJobEntity completedIngestion(UUID id) {

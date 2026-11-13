@@ -111,6 +111,14 @@ public class RepositoryMemoryService {
         return evaluationService.getReportForIngestion(ingestionId);
     }
 
+    public EvaluationDtos.EvidenceBundle getEvidenceForIngestion(UUID ingestionId) {
+        return evaluationService.getEvidenceForIngestion(ingestionId);
+    }
+
+    public EvaluationDtos.GraphContextGraph getGraphContextForIngestion(UUID ingestionId) {
+        return evaluationService.getGraphContextForIngestion(ingestionId);
+    }
+
     /** Retrieval-only endpoint: Cognee returns passages; the API does not ask Cognee to generate an answer. */
     public Map<String, Object> search(String url, String query) {
         RepositoryUrl repository = RepositoryUrl.parse(url);

@@ -46,4 +46,30 @@ class RepositoryEvidenceTest {
         assertThat(evidence).hasSize(1);
         assertThat(evidence.getFirst().filePath()).isEqualTo("src/main/java/SearchController.java");
     }
+
+    @Test
+    void preservesCogneeSourceLineMetadataForCitationValidation() {
+        var response = List.of(Map.of(
+                "excerpt", "public class SearchController {\n}",
+                "filePath", "src/main/java/SearchController.java",
+                "startLine", 18,
+                "endLine", 19));
+
+        List<RepositoryEvidence> evidence = RepositoryEvidence.extract(response, mapper,
+                "https://github.com/example/project");
+
+        assertThat(evidence).singleElement().satisfies(item -> {
+            assertThat(item.startLine()).isEqualTo(18);
+            assertThat(item.endLine()).isEqualTo(19);
+        });
+    }
+
+    @Test
+    void rejectsCogneePathsThatClearlyBelongToAnotherRepository() {
+        var response = List.of(Map.of(
+                "text", "public class ForeignController { }",
+                "metadata", Map.of("file_path", "file:///app/.cognee/repos/github.com-other-foreign/src/ForeignController.java")));
+
+        assertThat(RepositoryEvidence.extract(response, mapper, "https://github.com/example/project")).isEmpty();
+    }
 }

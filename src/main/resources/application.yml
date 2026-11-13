@@ -50,13 +50,27 @@ management:
 campuscode:
   evaluation:
     from-email: ${MAIL_FROM:}
+    retrieval:
+      audit-content: ${COGNEE_RETRIEVAL_AUDIT_CONTENT:false}
+      audit-preview-chars: ${COGNEE_RETRIEVAL_AUDIT_PREVIEW_CHARS:500}
+    context:
+      max-estimated-tokens: ${EVALUATION_CONTEXT_MAX_TOKENS:40000}
+      chars-per-token: ${EVALUATION_CONTEXT_CHARS_PER_TOKEN:2}
+      max-evidence-per-dimension: ${EVALUATION_CONTEXT_MAX_EVIDENCE_PER_DIMENSION:4}
+      max-evidence-chars: ${EVALUATION_CONTEXT_MAX_EVIDENCE_CHARS:4000}
+      max-graph-facts: ${EVALUATION_CONTEXT_MAX_GRAPH_FACTS:36}
+      max-graph-description-chars: ${EVALUATION_CONTEXT_MAX_GRAPH_DESCRIPTION_CHARS:500}
   cognee:
     base-url: ${COGNEE_BASE_URL:http://localhost:8000}
     connect-timeout: 10s
     read-timeout: 20m
+    username: ${COGNEE_USERNAME:${DEFAULT_USER_EMAIL:default_user@example.com}}
+    password: ${COGNEE_PASSWORD:${DEFAULT_USER_PASSWORD:default_password}}
   worker:
     threads: ${CAMPUSCODE_WORKER_THREADS:2}
 
 logging:
+  level:
+    com.campuscode.service.EvaluationService: ${CAMPUSCODE_EVALUATION_LOG_LEVEL:INFO}
   pattern:
     console: ${LOGGING_PATTERN:%green(%d{HH:mm:ss.SSS}) %blue(%-5level) %red([%thread]) %yellow(%logger{15}) - %msg%n}

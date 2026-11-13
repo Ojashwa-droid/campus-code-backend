@@ -10,46 +10,114 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
 import java.net.URI;
+import java.util.LinkedHashSet;
 
-record RepositoryEvidence(String id, String filePath, String text) {
+record RepositoryEvidence(String id, String filePath, String text, int startLine, int endLine) {
+    RepositoryEvidence(String id, String filePath, String text) { this(id, filePath, text, 0, 0); }
     private static final Pattern SOURCE_PATH = Pattern.compile("(?i)(?:source|file_path|filepath|file|path)\\s*[:=]\\s*['\\\"]?([^\\s'\\\"]+)");
 
     static List<RepositoryEvidence> extract(Object response, ObjectMapper mapper, String repositoryUrl) {
+        return extractWithAudit(response, mapper, repositoryUrl).evidence();
+    }
+
+    static Extraction extractWithAudit(Object response, ObjectMapper mapper, String repositoryUrl) {
         JsonNode root = mapper.valueToTree(response);
         if (root.isTextual()) {
             try { root = mapper.readTree(root.textValue()); }
             catch (Exception ignored) { }
         }
         List<RepositoryEvidence> evidence = new ArrayList<>();
-        collect(root, evidence, repositoryUrl);
-        return evidence.stream().filter(item -> !item.text().isBlank()).distinct().toList();
+        List<RawCandidate> candidates = new ArrayList<>();
+        collect(root, evidence, candidates, repositoryUrl);
+        return new Extraction(evidence.stream().filter(item -> !item.text().isBlank() && item.filePath() != null)
+                .distinct().toList(), List.copyOf(candidates));
     }
 
-    private static void collect(JsonNode node, List<RepositoryEvidence> out, String repositoryUrl) {
+    private static void collect(JsonNode node, List<RepositoryEvidence> out, List<RawCandidate> candidates,
+                                String repositoryUrl) {
         if (node == null || node.isNull()) return;
         if (node.isArray()) {
-            node.forEach(child -> collect(child, out, repositoryUrl));
+            node.forEach(child -> collect(child, out, candidates, repositoryUrl));
             return;
         }
         if (node.isObject()) {
             String content = firstText(node, "text", "chunk", "content", "page_content", "document");
+            if (content == null) content = firstText(node, "excerpt", "snippet", "code");
             if (content != null && !content.isBlank()) {
                 JsonNode metadata = node.path("metadata");
-                String filePath = findPath(metadata);
-                if (filePath == null) filePath = findPath(node);
-                filePath = normalizePath(filePath, repositoryUrl);
-                if (filePath == null) filePath = pathFromText(content);
-                out.add(new RepositoryEvidence("e" + (out.size() + 1), filePath, content));
+                String originalPath = findPath(metadata);
+                if (originalPath == null) originalPath = findPath(node);
+                String filePath = normalizePath(originalPath, repositoryUrl);
+                if (filePath == null) filePath = normalizePath(pathFromText(content), repositoryUrl);
+                int startLine = firstInteger(metadata, node, "start_line", "startLine", "line_start", "lineStart",
+                        "line", "line_number", "lineNumber", "start_line_number");
+                int endLine = firstInteger(metadata, node, "end_line", "endLine", "line_end", "lineEnd", "end_line_number");
+                if (startLine > 0 && endLine <= 0) endLine = startLine + (int) content.lines().count() - 1;
+                String reason = filePath == null ? (originalPath == null ? "MISSING_REPOSITORY_PATH" : "OFF_REPOSITORY_PATH")
+                        : startLine < 1 || endLine < startLine ? "MISSING_OR_INVALID_LINE_RANGE" : null;
+                candidates.add(new RawCandidate(filePath, startLine, endLine, content, reason));
+                if (filePath != null) out.add(new RepositoryEvidence("e" + (out.size() + 1), filePath, content, startLine, endLine));
                 return;
             }
             Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
-            while (fields.hasNext()) collect(fields.next().getValue(), out, repositoryUrl);
+            while (fields.hasNext()) collect(fields.next().getValue(), out, candidates, repositoryUrl);
             return;
         }
         if (node.isTextual() && node.textValue().length() > 20) {
             String content = node.textValue();
-            out.add(new RepositoryEvidence("e" + (out.size() + 1), pathFromText(content), content));
+            String originalPath = pathFromText(content);
+            String path = normalizePath(originalPath, repositoryUrl);
+            int startLine = lineFromText(content, "(?:start[_ ]?line|line)");
+            int endLine = lineFromText(content, "end[_ ]?line");
+            if (startLine > 0 && endLine <= 0) endLine = startLine + (int) content.lines().count() - 1;
+            String reason = path == null ? (originalPath == null ? "MISSING_REPOSITORY_PATH" : "OFF_REPOSITORY_PATH")
+                    : startLine < 1 || endLine < startLine ? "MISSING_OR_INVALID_LINE_RANGE" : null;
+            candidates.add(new RawCandidate(path, startLine, endLine, content, reason));
+            if (path != null) out.add(new RepositoryEvidence("e" + (out.size() + 1), path, content, startLine, endLine));
         }
+    }
+
+    private static int lineFromText(String text, String keyPattern) {
+        var matcher = Pattern.compile("(?i)\\b" + keyPattern + "\\b\\s*[:=]\\s*['\"]?(\\d+)").matcher(text);
+        return matcher.find() ? Integer.parseInt(matcher.group(1)) : 0;
+    }
+
+    private static int firstInteger(JsonNode first, JsonNode second, String... names) {
+        for (JsonNode node : List.of(first, second)) {
+            int value = findInteger(node, SetHolder.of(names));
+            if (value > 0) return value;
+        }
+        return 0;
+    }
+
+    private static int findInteger(JsonNode node, java.util.Set<String> names) {
+        if (node == null || node.isNull()) return 0;
+        if (node.isTextual() && (node.asText().startsWith("{") || node.asText().startsWith("["))) {
+            try { return findInteger(new ObjectMapper().readTree(node.asText()), names); }
+            catch (Exception ignored) { return 0; }
+        }
+        if (node.isObject()) {
+            Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> entry = fields.next();
+                if (names.contains(entry.getKey().toLowerCase(Locale.ROOT))) {
+                    JsonNode value = entry.getValue();
+                    if (value.canConvertToInt() && value.asInt() > 0) return value.asInt();
+                    if (value.isTextual()) try {
+                        int parsed = Integer.parseInt(value.asText());
+                        if (parsed > 0) return parsed;
+                    } catch (NumberFormatException ignored) { }
+                }
+                int nested = findInteger(entry.getValue(), names);
+                if (nested > 0) return nested;
+            }
+        } else if (node.isArray()) {
+            for (JsonNode child : node) {
+                int nested = findInteger(child, names);
+                if (nested > 0) return nested;
+            }
+        }
+        return 0;
     }
 
     private static String firstText(JsonNode node, String... names) {
@@ -92,6 +160,23 @@ record RepositoryEvidence(String id, String filePath, String text) {
         return null;
     }
 
+    record RawCandidate(String filePath, int startLine, int endLine, String content, String discardReason) {
+        String preview(int maxChars) {
+            if (content == null) return "";
+            String compact = content.replaceAll("\\s+", " ").strip();
+            return compact.length() <= maxChars ? compact : compact.substring(0, maxChars) + "…";
+        }
+    }
+    record Extraction(List<RepositoryEvidence> evidence, List<RawCandidate> candidates) { }
+
+    private static final class SetHolder {
+        static java.util.Set<String> of(String... names) {
+            java.util.Set<String> result = new LinkedHashSet<>();
+            for (String name : names) result.add(name.toLowerCase(Locale.ROOT));
+            return result;
+        }
+    }
+
     private static String normalizePath(String path, String repositoryUrl) {
         if (path == null) return null;
         String value = path.replace('\\', '/');
@@ -108,6 +193,8 @@ record RepositoryEvidence(String id, String filePath, String text) {
                 int relativeStart = repoIndex + repoDirectory.length();
                 if (relativeStart < value.length() && value.charAt(relativeStart) == '/') relativeStart++;
                 value = value.substring(relativeStart);
+            } else if (value.toLowerCase(Locale.ROOT).contains("github.com-")) {
+                return null;
             }
         } catch (RuntimeException ignored) { }
         while (value.startsWith("/")) value = value.substring(1);

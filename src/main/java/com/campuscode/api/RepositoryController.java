@@ -79,4 +79,14 @@ public class RepositoryController {
         return service.getReportForIngestion(id);
     }
 
+    @GetMapping("/ingestions/{id}/report/evidence")
+    public EvaluationDtos.EvidenceBundle evaluationEvidence(@PathVariable UUID id) {
+        return service.getEvidenceForIngestion(id);
+    }
+
+    @GetMapping("/ingestions/{id}/report/graph-context")
+    public EvaluationDtos.GraphContextGraph evaluationGraphContext(@PathVariable UUID id) {
+        return service.getGraphContextForIngestion(id);
+    }
+
 }

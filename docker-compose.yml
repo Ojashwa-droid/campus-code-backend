@@ -35,11 +35,14 @@ services:
       VECTOR_DB_PROVIDER: lancedb
       DATA_ROOT_DIRECTORY: /cognee-storage/data
       SYSTEM_ROOT_DIRECTORY: /cognee-storage/system
-      ENABLE_BACKEND_ACCESS_CONTROL: "false"
+      # Give every dataset its own graph/vector storage so graph traversal cannot
+      # cross from one repository dataset into another.
+      ENABLE_BACKEND_ACCESS_CONTROL: "true"
       ALLOW_HTTP_REQUESTS: "true"
       # GitHub repository ingestion clones source into Cognee-managed local files.
       # Keep the Cognee port bound to localhost when enabling this for development.
       ACCEPT_LOCAL_FILE_PATH: "true"
+      DEFAULT_USER_EMAIL: ${DEFAULT_USER_EMAIL:-default_user@example.com}
       DEFAULT_USER_PASSWORD: ${DEFAULT_USER_PASSWORD:-default_password}
     volumes:
       - cognee_storage:/cognee-storage

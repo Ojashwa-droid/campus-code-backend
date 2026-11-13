@@ -38,6 +38,9 @@ public class EvaluationJobEntity {
     private String reportJson;
 
     @Column(columnDefinition = "text")
+    private String evidenceJson;
+
+    @Column(columnDefinition = "text")
     private String error;
 
     @Column(nullable = false)
@@ -87,6 +90,8 @@ public class EvaluationJobEntity {
     public String getStage() { return stage; }
     public int getProgress() { return progress; }
     public String getReportJson() { return reportJson; }
+    public String getEvidenceJson() { return evidenceJson; }
+    public void setEvidenceJson(String evidenceJson) { this.evidenceJson = evidenceJson; }
     public String getError() { return error; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }

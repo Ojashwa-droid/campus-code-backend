@@ -2,6 +2,7 @@ package com.campuscode.api;
 
 import com.campuscode.persistence.EvaluationJobEntity;
 import com.campuscode.service.RepositoryMemoryService;
+import com.campuscode.service.GraphVisualizationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -30,7 +31,7 @@ class RepositoryControllerEvaluationTest {
     @BeforeEach
     void setUp() {
         service = mock(RepositoryMemoryService.class);
-        mvc = MockMvcBuilders.standaloneSetup(new RepositoryController(service)).build();
+        mvc = MockMvcBuilders.standaloneSetup(new RepositoryController(service, mock(GraphVisualizationService.class))).build();
     }
 
     @Test
@@ -65,6 +66,35 @@ class RepositoryControllerEvaluationTest {
     }
 
     @Test
+    void evidenceBundleIsAvailableThroughAnAdditionalReadRoute() throws Exception {
+        UUID ingestionId = UUID.randomUUID();
+        EvaluationDtos.EvidenceBundle evidence = new EvaluationDtos.EvidenceBundle(UUID.randomUUID(), ingestionId,
+                "https://github.com/example/repo", List.of(), List.of());
+        when(service.getEvidenceForIngestion(ingestionId)).thenReturn(evidence);
+
+        mvc.perform(get("/api/repositories/ingestions/{id}/report/evidence", ingestionId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ingestionId").value(ingestionId.toString()))
+                .andExpect(jsonPath("$.evidence").isArray())
+                .andExpect(jsonPath("$.graphContext").isArray());
+    }
+
+    @Test
+    void reportGraphContextIsAvailableThroughSpringApi() throws Exception {
+        UUID ingestionId = UUID.randomUUID();
+        EvaluationDtos.GraphContextGraph graph = new EvaluationDtos.GraphContextGraph(UUID.randomUUID(), ingestionId,
+                "https://github.com/example/repo", true, List.of(), List.of());
+        when(service.getGraphContextForIngestion(ingestionId)).thenReturn(graph);
+
+        mvc.perform(get("/api/repositories/ingestions/{id}/report/graph-context", ingestionId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ingestionId").value(ingestionId.toString()))
+                .andExpect(jsonPath("$.edgesFromCurrentGraph").value(true))
+                .andExpect(jsonPath("$.nodes").isArray())
+                .andExpect(jsonPath("$.edges").isArray());
+    }
+
+    @Test
     void streamIsAnAdditionalPostRouteWithEventStreamResponse() {
         try {
             PostMapping mapping = RepositoryController.class
@@ -75,7 +105,7 @@ class RepositoryControllerEvaluationTest {
             UUID ingestionId = UUID.randomUUID();
             SseEmitter emitter = new SseEmitter(60_000L);
             when(service.streamEvaluation(ingestionId)).thenReturn(emitter);
-            assertThat(new RepositoryController(service).evaluateStream(ingestionId)).isSameAs(emitter);
+            assertThat(new RepositoryController(service, mock(GraphVisualizationService.class)).evaluateStream(ingestionId)).isSameAs(emitter);
             verify(service).streamEvaluation(ingestionId);
         } catch (NoSuchMethodException e) {
             throw new AssertionError("Streaming evaluation route is missing", e);
