@@ -97,6 +97,17 @@ Content-Type: application/json
 
 Only canonical public GitHub HTTPS repository URLs are supported. CampusCode does not scrape GitHub pages; Cognee receives the repository URL and handles ingestion. The dataset name is deterministic from the canonical repository URL.
 
+### Repository knowledge graph
+
+After a repository ingestion completes, request its Cognee visualization through Spring Boot:
+
+```http
+GET /api/repositories/graph/visualization?repositoryUrl=https%3A%2F%2Fgithub.com%2Fowner%2Frepository
+Accept: text/html
+```
+
+Spring resolves the repository's latest completed ingestion to its Cognee dataset UUID, then fetches `/api/v1/visualize` with that UUID and full-graph mode. The Cognee URL and dataset UUID stay on the backend. The React client fetches this HTML from Spring and displays it in a sandboxed iframe. A repository without a completed ingestion returns an error instead of selecting another dataset.
+
 ## Local email testing with Mailpit
 
 Mailpit captures email locally for development, so no Gmail account, SMTP credentials, or external delivery is needed. Add these values to your existing `.env` (copying `.env.example` again would overwrite your current settings):

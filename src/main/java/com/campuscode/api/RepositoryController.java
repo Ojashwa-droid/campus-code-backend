@@ -1,6 +1,7 @@
 package com.campuscode.api;
 
 import com.campuscode.service.RepositoryMemoryService;
+import com.campuscode.service.GraphVisualizationService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,11 +14,19 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/repositories")
+@CrossOrigin(origins = "*")
 public class RepositoryController {
     private final RepositoryMemoryService service;
+    private final GraphVisualizationService graphVisualizationService;
 
-    public RepositoryController(RepositoryMemoryService service) {
+    public RepositoryController(RepositoryMemoryService service, GraphVisualizationService graphVisualizationService) {
         this.service = service;
+        this.graphVisualizationService = graphVisualizationService;
+    }
+
+    @GetMapping("/")
+    public String home() {
+        return "Tunnel is working!";
     }
 
     @PostMapping("/ingestions")
@@ -37,6 +46,14 @@ public class RepositoryController {
     @PostMapping("/search")
     public Map<String, Object> search(@Valid @RequestBody SearchRepositoryRequest request) {
         return service.search(request.repositoryUrl(), request.query());
+    }
+
+    @GetMapping(value = "/graph/visualization", produces = MediaType.TEXT_HTML_VALUE)
+    public ResponseEntity<String> graphVisualization(@RequestParam String repositoryUrl) {
+        return ResponseEntity.ok()
+                .contentType(MediaType.TEXT_HTML)
+                .header("X-Content-Type-Options", "nosniff")
+                .body(graphVisualizationService.visualizeRepository(repositoryUrl));
     }
 
     @PostMapping("/ingestions/{id}/evaluations")

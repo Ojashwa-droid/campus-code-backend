@@ -6,6 +6,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 
@@ -31,5 +32,11 @@ public class ApiExceptionHandler {
         String detail = exception.getMessage() == null ? "No details available" : exception.getMessage();
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                 .body(Map.of("error", "Cognee request failed", "detail", detail));
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    ResponseEntity<Map<String, String>> requestFailure(ResponseStatusException exception) {
+        String message = exception.getReason() == null ? "Request could not be completed" : exception.getReason();
+        return ResponseEntity.status(exception.getStatusCode()).body(Map.of("error", message));
     }
 }

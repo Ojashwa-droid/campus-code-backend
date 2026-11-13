@@ -176,6 +176,15 @@ Content-Type: application/json
 }
 ```
 
+Open a repository's interactive Cognee graph after its ingestion reaches `COMPLETED`:
+
+```http
+GET http://localhost:8080/api/repositories/graph/visualization?repositoryUrl=https%3A%2F%2Fgithub.com%2Fowner%2Frepository
+Accept: text/html
+```
+
+The React graph page uses this Spring endpoint and renders its HTML response in a sandboxed iframe. The browser does not call Cognee directly. You can also open the completed ingestion page in the frontend and choose **Explore knowledge graph**.
+
 ## PostgreSQL in IntelliJ IDEA
 
 Create a PostgreSQL data source with:

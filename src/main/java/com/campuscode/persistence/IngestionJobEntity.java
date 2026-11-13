@@ -23,6 +23,9 @@ public class IngestionJobEntity {
     @Column(nullable = false, length = 100)
     private String datasetName;
 
+    @Column(length = 36)
+    private String cogneeDatasetId;
+
     @Column(length = 320)
     private String notificationEmail;
 
@@ -64,6 +67,8 @@ public class IngestionJobEntity {
     public UUID getId() { return id; }
     public String getRepositoryUrl() { return repositoryUrl; }
     public String getDatasetName() { return datasetName; }
+    public String getCogneeDatasetId() { return cogneeDatasetId; }
+    public void setCogneeDatasetId(String cogneeDatasetId) { this.cogneeDatasetId = cogneeDatasetId; }
     public String getNotificationEmail() { return notificationEmail; }
     public IngestionStatus.State getStatus() { return status; }
 }
