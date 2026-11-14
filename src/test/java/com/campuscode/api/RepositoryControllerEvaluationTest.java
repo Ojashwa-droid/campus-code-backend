@@ -95,6 +95,26 @@ class RepositoryControllerEvaluationTest {
     }
 
     @Test
+    void evaluationContextPreviewIsAnAdditionalPostRoute() throws Exception {
+        UUID ingestionId = UUID.randomUUID();
+        EvaluationDtos.EvaluationContextPreview preview = new EvaluationDtos.EvaluationContextPreview(
+                ingestionId, "https://github.com/example/repo", "dataset-uuid",
+                "Cognee-provided paths and lines.",
+                new EvaluationDtos.EvidenceBundle(null, ingestionId, "https://github.com/example/repo", List.of(), List.of()),
+                new EvaluationDtos.ContextDiagnostics(100, 40000, 4, 2, 2, 1, 1, 0, 3, 2,
+                        0, 0, 1, 1, java.util.Map.of("MISSING_OR_INVALID_LINE_RANGE", 1), List.of()));
+        when(service.previewEvaluationContext(ingestionId)).thenReturn(preview);
+
+        mvc.perform(post("/api/repositories/ingestions/{id}/evaluation-context/preview", ingestionId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.datasetId").value("dataset-uuid"))
+                .andExpect(jsonPath("$.context.evidence").isArray())
+                .andExpect(jsonPath("$.diagnostics.searches").isArray())
+                .andExpect(jsonPath("$.citationNotice").exists());
+        verify(service).previewEvaluationContext(ingestionId);
+    }
+
+    @Test
     void streamIsAnAdditionalPostRouteWithEventStreamResponse() {
         try {
             PostMapping mapping = RepositoryController.class

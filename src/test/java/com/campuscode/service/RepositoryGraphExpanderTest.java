@@ -97,4 +97,21 @@ class RepositoryGraphExpanderTest {
             assertThat(edge.label()).isEqualTo("calls");
         });
     }
+
+    @Test
+    void codeSearchNodeIdsAreUsedAsGraphExpansionSeeds() throws Exception {
+        var graph = new ObjectMapper().readTree("""
+                {"nodes":[
+                  {"id":"seed","label":"SecureConfig","type":"CodeSymbol","properties":{"file_path":"src/SecureConfig.java","symbol_kind":"class","repo":"OmniSearch"}},
+                  {"id":"neighbor","label":"AuthService","type":"CodeSymbol","properties":{"file_path":"src/AuthService.java","symbol_kind":"class","repo":"OmniSearch"}},
+                  {"id":"unrelated","label":"RandomDataLoader","type":"CodeSymbol","properties":{"file_path":"src/RandomDataLoader.java","symbol_kind":"class","repo":"OmniSearch"}}],
+                  "edges":[{"source":"seed","target":"neighbor","label":"calls"}]}
+                """);
+
+        var expansion = RepositoryGraphExpander.expandDetailed(graph, "security", "unmatched query terms",
+                "{}", Map.of(), "https://github.com/Ojashwa-droid/OmniSearch", java.util.Set.of("seed"));
+
+        assertThat(expansion.facts()).extracting(fact -> fact.id()).contains("seed", "neighbor")
+                .doesNotContain("unrelated");
+    }
 }

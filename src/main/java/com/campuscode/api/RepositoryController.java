@@ -89,4 +89,14 @@ public class RepositoryController {
         return service.getGraphContextForIngestion(id);
     }
 
+    @PostMapping("/ingestions/{id}/evaluation-context/preview")
+    public EvaluationDtos.EvaluationContextPreview evaluationContextPreview(@PathVariable UUID id) {
+        return service.previewEvaluationContext(id);
+    }
+
+    @PostMapping("/ingestions/{id}/evaluation-context/cognee-analysis-preview")
+    public EvaluationDtos.CogneeRepositoryAnalysisPreview cogneeRepositoryAnalysisPreview(@PathVariable UUID id) {
+        return service.previewCogneeRepositoryAnalysis(id);
+    }
+
 }

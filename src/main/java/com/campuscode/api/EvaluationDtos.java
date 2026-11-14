@@ -2,6 +2,7 @@ package com.campuscode.api;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public final class EvaluationDtos {
@@ -26,12 +27,43 @@ public final class EvaluationDtos {
     }
     public record EvidenceBundle(UUID evaluationId, UUID ingestionId, String repositoryUrl,
                                  List<RepositoryEvidenceItem> evidence, List<GraphFact> graphContext,
-                                 List<GraphEdge> graphEdges) {
+                                 List<GraphEdge> graphEdges, RepositoryArchitecture architecture) {
         public EvidenceBundle(UUID evaluationId, UUID ingestionId, String repositoryUrl,
                               List<RepositoryEvidenceItem> evidence, List<GraphFact> graphContext) {
-            this(evaluationId, ingestionId, repositoryUrl, evidence, graphContext, List.of());
+            this(evaluationId, ingestionId, repositoryUrl, evidence, graphContext, List.of(), null);
+        }
+        public EvidenceBundle(UUID evaluationId, UUID ingestionId, String repositoryUrl, List<RepositoryEvidenceItem> evidence, List<GraphFact> graphContext, List<GraphEdge> graphEdges) { this(evaluationId, ingestionId, repositoryUrl, evidence, graphContext, graphEdges, null); }
+    }
+    public record RepositoryArchitecture(String notice, Map<String, Integer> counts, List<ArchitectureNode> nodes, List<ArchitectureRelation> relationships) { }
+    public record ArchitectureNode(String id, String kind, String name, String filePath, Integer line, String description) { }
+    public record ArchitectureRelation(String from, String type, String to, Integer count) { }
+    public record EvaluationContextPreview(UUID ingestionId, String repositoryUrl, String datasetId,
+                                           String citationNotice, EvidenceBundle context,
+                                           ContextDiagnostics diagnostics, Object architectureAnalysis,
+                                           String architectureNotice) {
+        public EvaluationContextPreview(UUID ingestionId, String repositoryUrl, String datasetId,
+                                        String citationNotice, EvidenceBundle context, ContextDiagnostics diagnostics) {
+            this(ingestionId, repositoryUrl, datasetId, citationNotice, context, diagnostics, null, null);
         }
     }
+    public record CogneeRepositoryAnalysisPreview(UUID ingestionId, String repositoryUrl, String datasetId,
+                                                   String operation, Object analysis,
+                                                   String notice) { }
+    public record ContextDiagnostics(int estimatedTokens, int tokenBudget, int retrievedCandidates,
+                                     int citationReadyCandidates, int retainedPassages,
+                                     int retainedSourceCodePassages, int retainedTestPassages,
+                                     int retainedDocumentationPassages, int graphFacts, int graphEdges,
+                                     int discardedMissingId, int discardedMissingSource,
+                                     int discardedMissingPath, int discardedInvalidLines,
+                                     Map<String, Integer> discardedByReason,
+                                     List<SearchResultDiagnostic> searches) { }
+    public record SearchResultDiagnostic(String dimension, String searchType, int candidateCount,
+                                         int usablePathCount, int citationReadyCount,
+                                         Map<String, Integer> discardedByReason, List<String> resultPaths,
+                                         List<RawSearchResult> results, int graphSeedCount, int graphNodeCount,
+                                         int graphEdgeCount, String error) { }
+    public record RawSearchResult(String path, String normalizedPath, Integer startLine, Integer endLine,
+                                  String content, boolean contentTruncated, String discardReason) { }
     public record GraphEdge(String sourceId, String targetId, String label, List<String> dimensions) {
         public GraphEdge(String sourceId, String targetId, String label) {
             this(sourceId, targetId, label, List.of());
@@ -41,11 +73,16 @@ public final class EvaluationDtos {
                                     boolean edgesFromCurrentGraph, List<GraphFact> nodes,
                                     List<GraphEdge> edges) { }
     public record RepositoryEvidenceItem(String evidenceId, String dimension, String filePath,
-                                         int startLine, int endLine, String excerpt, List<String> dimensions) {
+                                         int startLine, int endLine, String excerpt, List<String> dimensions,
+                                         String evidenceKind) {
+        public RepositoryEvidenceItem(String evidenceId, String dimension, String filePath,
+                                      int startLine, int endLine, String excerpt, List<String> dimensions) {
+            this(evidenceId, dimension, filePath, startLine, endLine, excerpt, dimensions, null);
+        }
         public RepositoryEvidenceItem(String evidenceId, String dimension, String filePath,
                                        int startLine, int endLine, String excerpt) {
             this(evidenceId, dimension, filePath, startLine, endLine, excerpt,
-                    dimension == null ? List.of() : List.of(dimension));
+                    dimension == null ? List.of() : List.of(dimension), null);
         }
     }
     public record GraphFact(String id, String dimension, String label, String type, String description,

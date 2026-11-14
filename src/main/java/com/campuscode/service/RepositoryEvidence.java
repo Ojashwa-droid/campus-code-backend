@@ -33,6 +33,53 @@ record RepositoryEvidence(String id, String filePath, String text, int startLine
                 .distinct().toList(), List.copyOf(candidates));
     }
 
+    static CodeSearchSummary summarizeCodeSearch(Object response, ObjectMapper mapper) {
+        JsonNode root = mapper.valueToTree(response);
+        if (root.isTextual()) root = parseJsonText(root, mapper);
+        SetHolder ids = new SetHolder();
+        SetHolder paths = new SetHolder();
+        int[] shapeCounts = new int[2];
+        collectCodeSearch(root, mapper, ids, paths, shapeCounts);
+        return new CodeSearchSummary(ids.values(), paths.values(), shapeCounts[0], shapeCounts[1]);
+    }
+
+    private static void collectCodeSearch(JsonNode node, ObjectMapper mapper, SetHolder ids,
+                                          SetHolder paths, int[] shapeCounts) {
+        if (node == null || node.isNull()) return;
+        if (node.isTextual()) {
+            JsonNode parsed = parseJsonText(node, mapper);
+            if (parsed != node) collectCodeSearch(parsed, mapper, ids, paths, shapeCounts);
+            return;
+        }
+        if (node.isArray()) { node.forEach(child -> collectCodeSearch(child, mapper, ids, paths, shapeCounts)); return; }
+        if (!node.isObject()) return;
+        JsonNode citations = node.get("citations");
+        if (citations != null && citations.isArray()) citations.forEach(citation -> {
+            String id = firstText(citation, "node_id", "nodeId", "id");
+            String path = firstText(citation, "file", "file_path", "filePath", "path");
+            ids.add(id);
+            paths.add(path);
+        });
+        JsonNode neighborhood = node.get("neighborhood");
+        if (neighborhood != null && neighborhood.isObject()) {
+            JsonNode nodes = neighborhood.path("nodes");
+            JsonNode edges = neighborhood.path("edges");
+            if (nodes.isArray()) shapeCounts[0] += nodes.size();
+            if (edges.isArray()) shapeCounts[1] += edges.size();
+        }
+        node.elements().forEachRemaining(child -> collectCodeSearch(child, mapper, ids, paths, shapeCounts));
+    }
+
+    private static JsonNode parseJsonText(JsonNode value, ObjectMapper mapper) {
+        String text = value.asText().strip();
+        if (!text.startsWith("{") && !text.startsWith("[")) return value;
+        try { return mapper.readTree(text); }
+        catch (Exception ignored) { return value; }
+    }
+
+    record CodeSearchSummary(List<String> seedNodeIds, List<String> resultPaths,
+                             int neighborhoodNodeCount, int neighborhoodEdgeCount) { }
+
     private static void collect(JsonNode node, List<RepositoryEvidence> out, List<RawCandidate> candidates,
                                 String repositoryUrl) {
         if (node == null || node.isNull()) return;
@@ -55,7 +102,7 @@ record RepositoryEvidence(String id, String filePath, String text, int startLine
                 if (startLine > 0 && endLine <= 0) endLine = startLine + (int) content.lines().count() - 1;
                 String reason = filePath == null ? (originalPath == null ? "MISSING_REPOSITORY_PATH" : "OFF_REPOSITORY_PATH")
                         : startLine < 1 || endLine < startLine ? "MISSING_OR_INVALID_LINE_RANGE" : null;
-                candidates.add(new RawCandidate(filePath, startLine, endLine, content, reason));
+                candidates.add(new RawCandidate(filePath, startLine, endLine, content, reason, originalPath));
                 if (filePath != null) out.add(new RepositoryEvidence("e" + (out.size() + 1), filePath, content, startLine, endLine));
                 return;
             }
@@ -63,18 +110,11 @@ record RepositoryEvidence(String id, String filePath, String text, int startLine
             while (fields.hasNext()) collect(fields.next().getValue(), out, candidates, repositoryUrl);
             return;
         }
-        if (node.isTextual() && node.textValue().length() > 20) {
-            String content = node.textValue();
-            String originalPath = pathFromText(content);
-            String path = normalizePath(originalPath, repositoryUrl);
-            int startLine = lineFromText(content, "(?:start[_ ]?line|line)");
-            int endLine = lineFromText(content, "end[_ ]?line");
-            if (startLine > 0 && endLine <= 0) endLine = startLine + (int) content.lines().count() - 1;
-            String reason = path == null ? (originalPath == null ? "MISSING_REPOSITORY_PATH" : "OFF_REPOSITORY_PATH")
-                    : startLine < 1 || endLine < startLine ? "MISSING_OR_INVALID_LINE_RANGE" : null;
-            candidates.add(new RawCandidate(path, startLine, endLine, content, reason));
-            if (path != null) out.add(new RepositoryEvidence("e" + (out.size() + 1), path, content, startLine, endLine));
+        if (node.isTextual()) {
+            JsonNode parsed = parseJsonText(node, new ObjectMapper());
+            if (parsed != node) collect(parsed, out, candidates, repositoryUrl);
         }
+        // Bare text leaves are not passage records; they may be IDs, graph labels, or metadata.
     }
 
     private static int lineFromText(String text, String keyPattern) {
@@ -160,7 +200,8 @@ record RepositoryEvidence(String id, String filePath, String text, int startLine
         return null;
     }
 
-    record RawCandidate(String filePath, int startLine, int endLine, String content, String discardReason) {
+    record RawCandidate(String filePath, int startLine, int endLine, String content, String discardReason,
+                        String originalPath) {
         String preview(int maxChars) {
             if (content == null) return "";
             String compact = content.replaceAll("\\s+", " ").strip();
@@ -170,6 +211,9 @@ record RepositoryEvidence(String id, String filePath, String text, int startLine
     record Extraction(List<RepositoryEvidence> evidence, List<RawCandidate> candidates) { }
 
     private static final class SetHolder {
+        private final LinkedHashSet<String> values = new LinkedHashSet<>();
+        void add(String value) { if (value != null && !value.isBlank()) values.add(value); }
+        List<String> values() { return List.copyOf(values); }
         static java.util.Set<String> of(String... names) {
             java.util.Set<String> result = new LinkedHashSet<>();
             for (String name : names) result.add(name.toLowerCase(Locale.ROOT));

@@ -47,6 +47,12 @@ final class RepositoryGraphExpander {
 
     static Expansion expandDetailed(JsonNode graph, String dimension, String query,
                                     Object codeSearch, Object chunkSearch, String repositoryUrl) {
+        return expandDetailed(graph, dimension, query, codeSearch, chunkSearch, repositoryUrl, Set.of());
+    }
+
+    static Expansion expandDetailed(JsonNode graph, String dimension, String query,
+                                    Object codeSearch, Object chunkSearch, String repositoryUrl,
+                                    Set<String> codeSeedIds) {
         JsonNode rawNodes = graph == null ? null : graph.path("nodes");
         JsonNode rawEdges = graph == null ? null : graph.path("edges");
         if (rawNodes == null || !rawNodes.isArray()) return new Expansion(List.of(), List.of());
@@ -74,6 +80,8 @@ final class RepositoryGraphExpander {
                 .toList();
 
         LinkedHashSet<String> selected = new LinkedHashSet<>();
+        if (codeSeedIds != null) codeSeedIds.stream().filter(nodes::containsKey)
+                .filter(id -> isScoreableSymbol(nodes.get(id))).limit(MAX_SEEDS).forEach(selected::add);
         for (var entry : ranked) {
             int rank = score(entry.getValue(), queryTerms, searchText);
             if (rank <= 0 || selected.size() >= MAX_SEEDS) break;

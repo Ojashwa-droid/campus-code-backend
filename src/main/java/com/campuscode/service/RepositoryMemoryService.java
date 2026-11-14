@@ -119,6 +119,14 @@ public class RepositoryMemoryService {
         return evaluationService.getGraphContextForIngestion(ingestionId);
     }
 
+    public EvaluationDtos.EvaluationContextPreview previewEvaluationContext(UUID ingestionId) {
+        return evaluationService.previewContext(ingestionId);
+    }
+
+    public EvaluationDtos.CogneeRepositoryAnalysisPreview previewCogneeRepositoryAnalysis(UUID ingestionId) {
+        return evaluationService.previewCogneeRepositoryAnalysis(ingestionId);
+    }
+
     /** Retrieval-only endpoint: Cognee returns passages; the API does not ask Cognee to generate an answer. */
     public Map<String, Object> search(String url, String query) {
         RepositoryUrl repository = RepositoryUrl.parse(url);

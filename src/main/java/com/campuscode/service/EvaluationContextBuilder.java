@@ -188,7 +188,19 @@ final class EvaluationContextBuilder {
         int endLine = Math.min(source.endLine(), source.startLine() + (int) excerpt.lines().count() - 1);
         List<String> dimensions = DIMENSIONS.stream().filter(passage.dimensions::contains).toList();
         return new EvaluationDtos.RepositoryEvidenceItem(source.id(), dimensions.getFirst(), source.filePath(),
-                source.startLine(), endLine, excerpt, dimensions);
+                source.startLine(), endLine, excerpt, dimensions, evidenceKind(source.filePath()));
+    }
+
+    private static String evidenceKind(String path) {
+        String normalized = path.replace('\\', '/').toLowerCase(Locale.ROOT);
+        String filename = normalized.substring(normalized.lastIndexOf('/') + 1);
+        if (normalized.contains("/test/") || normalized.contains("/tests/")
+                || filename.matches(".*(?:test|tests|spec)[-_]?[^/]*\\.[^.]+$")) return "TEST_CODE";
+        if (Set.of(".java", ".kt", ".py", ".js", ".jsx", ".ts", ".tsx", ".go", ".rs", ".cs", ".cpp", ".c")
+                .stream().anyMatch(filename::endsWith)) return "SOURCE_CODE";
+        if (Set.of(".md", ".rst", ".txt", ".adoc").stream().anyMatch(filename::endsWith)
+                || normalized.contains("/docs/")) return "SUPPORTING_DOCUMENTATION";
+        return "SUPPORTING_OTHER";
     }
 
     private EvaluationDtos.EvidenceBundle bundle(EvaluationDtos.EvidenceBundle source,
@@ -199,7 +211,7 @@ final class EvaluationContextBuilder {
         List<EvaluationDtos.GraphEdge> selectedGraphEdges = edges.values().stream()
                 .filter(edge -> selectedNodeIds.contains(edge.sourceId()) && selectedNodeIds.contains(edge.targetId())).toList();
         return new EvaluationDtos.EvidenceBundle(source.evaluationId(), source.ingestionId(), source.repositoryUrl(),
-                List.copyOf(passages.values()), List.copyOf(facts.values()), selectedGraphEdges);
+                List.copyOf(passages.values()), List.copyOf(facts.values()), selectedGraphEdges, source.architecture());
     }
 
     private String serialize(EvaluationDtos.EvidenceBundle bundle) {

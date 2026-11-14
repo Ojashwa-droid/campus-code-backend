@@ -114,6 +114,20 @@ class EvaluationContextBuilderTest {
         assertThat(result.bundle().evidence()).hasSizeLessThan(5);
     }
 
+    @Test
+    void marksCodeTestsAndDocumentationInPreviewEvidence() {
+        var source = new RepositoryEvidence("s", "src/main/App.java", "class App {}", 1, 1);
+        var test = new RepositoryEvidence("t", "src/test/AppTest.java", "class AppTest {}", 1, 1);
+        var docs = new RepositoryEvidence("d", "README.md", "Application overview", 1, 1);
+        var items = List.of(item(source, "architecture"), item(test, "testing"), item(docs, "architecture"));
+
+        var result = builder(40000, 4, 4000, 0, 500).build(bundle(items, List.of()),
+                List.of(source, test, docs), "system prompt", REPOSITORY);
+
+        assertThat(result.bundle().evidence()).extracting(EvaluationDtos.RepositoryEvidenceItem::evidenceKind)
+                .containsExactly("SOURCE_CODE", "TEST_CODE", "SUPPORTING_DOCUMENTATION");
+    }
+
     private EvaluationContextBuilder builder(int tokens, int perDimension, int evidenceChars, int graphFacts, int graphChars) {
         return new EvaluationContextBuilder(mapper, tokens, 3, perDimension, evidenceChars, graphFacts, graphChars);
     }
