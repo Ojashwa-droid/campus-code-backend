@@ -35,6 +35,10 @@ services:
       VECTOR_DB_PROVIDER: lancedb
       DATA_ROOT_DIRECTORY: /cognee-storage/data
       SYSTEM_ROOT_DIRECTORY: /cognee-storage/system
+      # Rate limit related configurations
+      LLM_RATE_LIMIT_ENABLED: "true"
+      LLM_RATE_LIMIT_REQUESTS: "10"
+      LLM_RATE_LIMIT_INTERVAL: "60"
       # Give every dataset its own graph/vector storage so graph traversal cannot
       # cross from one repository dataset into another.
       ENABLE_BACKEND_ACCESS_CONTROL: "true"
