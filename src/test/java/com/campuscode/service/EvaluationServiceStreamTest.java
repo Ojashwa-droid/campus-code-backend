@@ -12,6 +12,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import org.springframework.core.io.ResourceLoader;
 
 import java.time.Instant;
 import java.util.List;
@@ -81,7 +82,8 @@ class EvaluationServiceStreamTest {
         ChatClient.Builder builder = mock(ChatClient.Builder.class);
         when(builder.build()).thenReturn(mock(ChatClient.class));
         return new EvaluationService(mock(RestClient.class), builder, ingestions, evaluations, mapper,
-                worker, hub, mock(JavaMailSender.class), "", "", 40000, 3, 4, 4000, 36, 500);
+                worker, hub, mock(JavaMailSender.class), "", "", 40000, 3, 4, 4000, 36, 500,
+                mock(ResourceLoader.class));
     }
 
     private static IngestionJobEntity completedIngestion(UUID id) {

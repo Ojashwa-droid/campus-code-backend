@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.web.client.RestClient;
+import org.springframework.core.io.ResourceLoader;
 
 import java.util.List;
 import java.util.UUID;
@@ -35,7 +36,7 @@ class EvaluationGraphCitationTest {
                 mock(IngestionJobRepository.class), mock(EvaluationJobRepository.class),
                 new ObjectMapper().findAndRegisterModules(), mock(ExecutorService.class),
                 mock(EvaluationStreamHub.class), mock(JavaMailSender.class), "", "",
-                40000, 3, 4, 4000, 36, 500);
+                40000, 3, 4, 4000, 36, 500, mock(ResourceLoader.class));
 
         List<EvaluationDtos.GraphFact> facts = List.of(
                 fact("controller-id", "RepositoryController", "src/RepositoryController.java", "architecture", List.of("calls EvaluationService"), 18),

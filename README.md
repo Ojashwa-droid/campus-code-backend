@@ -1,53 +1,148 @@
-# CampusCode Local Cognee MVP
+﻿# CampusCode
 
-CampusCode accepts a public GitHub repository, uses local Cognee to build its isolated code knowledge graph, retrieves repository passages and relevant graph neighborhoods, and evaluates the repository through Spring AI with Gemini. Job history, reports, and the exact evidence bundle sent to Gemini are stored in local PostgreSQL. Cognee retrieves; Gemini generates the scorecard.
+CampusCode is an AI-powered code evaluation platform that ingests public GitHub repositories, builds isolated knowledge graphs using local Cognee, and generates comprehensive engineering scorecards through Spring AI with Google Gemini. The system provides evidence-based assessments across architecture, maintainability, testing, reliability, security, and performance.
 
-## Requirements
+## Overview
+
+CampusCode addresses the challenge of automated code quality assessment by combining:
+
+- **Knowledge Graph Construction**: Uses Cognee to build isolated code knowledge graphs with local FastEmbed embeddings, Kuzu graph storage, and LanceDB vector storage
+- **AI-Powered Evaluation**: Leverages Spring AI with Google Gemini to generate detailed scorecards with evidence-backed insights
+- **Persistent Storage**: Maintains job history, evaluation reports, and evidence bundles in local PostgreSQL
+- **Semantic Search**: Enables retrieval of relevant code passages and graph neighborhoods through semantic queries
+
+The platform follows Spring ecosystem design principles, applying portability and modular design to the AI domain while promoting strongly-typed data structures and APIs.
+
+## Getting Started
+
+### Prerequisites
 
 - Java 21 or later
 - Maven 3.9+
 - Docker Desktop with Compose
 - A Gemini API key
 
-## Configure local services
+### Quick Start
 
-Copy `.env.example` to `.env`, then set `GEMINI_API_KEY` and a local `POSTGRES_PASSWORD`/`DATABASE_PASSWORD`. Keep the Cognee backend login (`COGNEE_USERNAME`/`COGNEE_PASSWORD`) aligned with the Cognee default account values (`DEFAULT_USER_EMAIL`/`DEFAULT_USER_PASSWORD`). PostgreSQL is published on localhost port 5433 because port 5432 is commonly occupied by an existing local PostgreSQL installation. Compose passes the Gemini key to Cognee for graph extraction, and Spring Boot reads the same `.env` when started from the project directory. Do not commit `.env`.
+1. **Configure environment variables**
 
-Start Cognee and PostgreSQL:
+Copy `.env.example` to `.env` and set your credentials:
+
+```powershell
+cp .env.example .env
+```
+
+Set the following in `.env`:
+- `GEMINI_API_KEY`: Your Google Gemini API key
+- `POSTGRES_PASSWORD` / `DATABASE_PASSWORD`: Local PostgreSQL password
+- `COGNEE_USERNAME` / `COGNEE_PASSWORD`: Cognee backend credentials (align with default account values)
+
+PostgreSQL is published on localhost port 5433 to avoid conflicts with existing installations.
+
+2. **Start local services**
 
 ```powershell
 docker compose up -d
-Invoke-RestMethod http://localhost:8000/health
+Invoke-RestMethod `http://localhost:8000/health
 docker compose ps
 ```
 
-Cognee uses local FastEmbed embeddings, Kuzu graph storage, and LanceDB vector storage. Backend access control gives datasets separate graph/vector stores and requires a bearer token; Spring obtains one using the configured local Cognee account. Its data is retained in the `cognee_storage` volume. PostgreSQL job and report history is retained in `campuscode_postgres`.
+This starts Cognee (port 8000) and PostgreSQL (port 5433). Data persists in Docker volumes: `cognee_storage` for Cognee data and `campuscode_postgres` for job history.
 
-Start the API from the project root so it can load `.env`:
+3. **Start the Spring Boot application**
 
 ```powershell
 mvn spring-boot:run
 ```
 
-The API is at `http://localhost:8080`. The optional Cognee graph UI can be started with `docker compose --profile ui up -d` and opened at `http://localhost:3000`.
+The API will be available at ``http://localhost:8080`.
 
-## Repository workflow
+4. **Optional: Start Cognee graph UI**
 
-### 1. Start ingestion
+```powershell
+docker compose --profile ui up -d
+```
+
+Access the UI at ``http://localhost:3000`.
+
+For detailed setup instructions, see [RUNNING_THE_APPLICATION.md](RUNNING_THE_APPLICATION.md).
+
+## Features
+
+- **Repository Ingestion**: Accepts public GitHub repository URLs and processes them through Cognee for knowledge graph construction
+- **Knowledge Graph Visualization**: Generates and serves HTML-based graph visualizations through Cognee
+- **AI-Powered Evaluation**: Evaluates repositories across six dimensions using Spring AI and Google Gemini:
+  - Architecture
+  - Maintainability
+  - Testing
+  - Reliability
+  - Security
+  - Performance/Scalability
+- **Evidence-Based Scoring**: Each dimension includes score rationales, strengths, areas for improvement, and source code citations
+- **Semantic Search**: Query indexed repositories to retrieve relevant code passages and graph neighborhoods
+- **Job Persistence**: All ingestion and evaluation jobs are tracked with status history in PostgreSQL
+- **Email Notifications**: Optional email notifications upon evaluation completion (configurable SMTP)
+- **Streaming Evaluation**: Real-time progress updates via Server-Sent Events (SSE)
+- **Audit Trail**: Complete evidence bundles available for inspection, including exact payloads sent to Gemini
+
+## Architecture
+
+CampusCode follows a modular architecture:
+
+```
+â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚   React     â”‚
+â”‚   Client    â”‚
+â””â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”˜
+       â”‚ HTTP
+â”Œâ”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”
+â”‚ Spring Boot â”‚
+â”‚   API       â”‚
+â””â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”˜
+       â”‚
+â”Œâ”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚  Cognee     â”‚â”€â”€â”€â”€â–¶â”‚ Gemini  â”‚
+â”‚  (Local)    â”‚     â”‚  API     â”‚
+â””â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”˜     â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+       â”‚
+â”Œâ”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”
+â”‚ PostgreSQL  â”‚
+â”‚  (Local)    â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+```
+
+**Data Flow**:
+1. React client submits repository URL to Spring Boot API
+2. Spring Boot forwards to Cognee for ingestion and knowledge graph construction
+3. Cognee processes repository, builds embeddings, stores in Kuzu graph and LanceDB vector store
+4. Spring Boot retrieves relevant passages and graph neighborhoods from Cognee
+5. Evidence bundle is sent to Gemini via Spring AI for evaluation
+6. Gemini generates scorecard with citations
+7. Results are persisted in PostgreSQL and returned to client
+
+## API Documentation
+
+The CampusCode API provides a comprehensive set of endpoints for repository ingestion, evaluation, and retrieval. Full API documentation with examples is available at:
+
+**[CampusCode API Documentation](`https://documenter.getpostman.com/view/41403866/2sBYHYuy7j)**
+
+### Key Endpoints
+
+#### Repository Ingestion
 
 ```http
 POST /api/repositories/ingestions
 Content-Type: application/json
 
 {
-  "repositoryUrl": "https://github.com/owner/repository",
+  "repositoryUrl": "`https://github.com/owner/repository",
   "notificationEmail": "optional@example.com"
 }
 ```
 
 The API returns `202 Accepted` and an ingestion ID. `notificationEmail` is optional. Repeated submissions for a repository reuse its latest non-failed ingestion; failed ingestions can be retried by submitting again.
 
-### 2. Check ingestion status
+#### Check Ingestion Status
 
 ```http
 GET /api/repositories/ingestions/{ingestionId}
@@ -55,15 +150,15 @@ GET /api/repositories/ingestions/{ingestionId}
 
 Wait for `COMPLETED` before evaluation. On service restart, any interrupted job is persisted as `FAILED` with a retry explanation.
 
-### 3. Request an engineering evaluation
+#### Request Evaluation
 
 ```http
 POST /api/repositories/ingestions/{ingestionId}/evaluations
 ```
 
-Evaluation is asynchronous. The response contains an evaluation ID and `QUEUED` status. The scorecard rates architecture, maintainability, testing, reliability, security, and performance/scalability from 0–5 with equal weight. The overall score is the mean normalized to 0–100.
+Evaluation is asynchronous. The response contains an evaluation ID and `QUEUED` status. The scorecard rates architecture, maintainability, testing, reliability, security, and performance/scalability from 0â€“5 with equal weight. The overall score is the mean normalized to 0â€“100.
 
-For a single streaming request that reports progress and then returns the scorecard, use the additional event-stream endpoint:
+#### Streaming Evaluation (SSE)
 
 ```http
 POST /api/repositories/ingestions/{ingestionId}/evaluations/stream
@@ -72,7 +167,7 @@ Accept: text/event-stream
 
 It emits `progress` events during retrieval, generation, validation, and report saving, followed by `completed` with the saved report or `failed` with the evaluation error. A frontend can call this with `fetch` and read the response stream. This route reuses an active evaluation; the original JSON endpoint above is unchanged.
 
-### 4. Read status and report
+#### Retrieve Report
 
 ```http
 GET /api/repositories/evaluations/{evaluationId}
@@ -81,47 +176,71 @@ GET /api/repositories/ingestions/{ingestionId}/report
 
 Each dimension includes a score rationale, evidence-backed strengths, areas for improvement, and citations. Citation line ranges must be present in Cognee source metadata; unsupported ranges and claims are omitted. A dimension without verifiable evidence is returned as score 0 with an insufficient-evidence rationale and no citations. The exact evidence and bounded graph neighborhood provided to Gemini are available separately:
 
+#### Evidence Inspection
+
 ```http
 GET /api/repositories/ingestions/{ingestionId}/report/evidence
 ```
 
-The existing report and status routes remain available. If an email and SMTP configuration were supplied, CampusCode sends a notification after report persistence; email delivery failure does not invalidate the report.
+Returns the exact evidence bundle sent to Gemini, including graph neighborhoods.
 
-Gemini receives a deduplicated, dimension-balanced evidence bundle with a default conservative estimated input ceiling of 40,000 tokens. Source and test files are prioritized over documentation; passages and graph descriptions are capped. Tune the budget and retrieval caps with `EVALUATION_CONTEXT_MAX_TOKENS`, `EVALUATION_CONTEXT_CHARS_PER_TOKEN`, `EVALUATION_CONTEXT_MAX_EVIDENCE_PER_DIMENSION`, `EVALUATION_CONTEXT_MAX_EVIDENCE_CHARS`, `EVALUATION_CONTEXT_MAX_GRAPH_FACTS`, and `EVALUATION_CONTEXT_MAX_GRAPH_DESCRIPTION_CHARS`. The estimate is character-based with a code-heavy safety factor, not Gemini's exact tokenizer. Logs include the estimate, selected/omitted counts, per-dimension coverage, truncation state, and evidence discard counts. Cognee result audit logs include each candidate's path, line range, content length, and whether it lacks citation metadata or belongs outside the repository. The evidence endpoint returns the exact bounded payload sent to Gemini, including evidence for failed generations when retrieval already completed.
-
-For a temporary content-level Cognee audit, set `COGNEE_RETRIEVAL_AUDIT_CONTENT=true` and `CAMPUSCODE_EVALUATION_LOG_LEVEL=DEBUG` in `.env`, then restart Spring Boot. The logs include bounded content previews and a clipped raw response (default preview 500 characters; tune with `COGNEE_RETRIEVAL_AUDIT_PREVIEW_CHARS`). Repository code can contain secrets, so turn content auditing back off after debugging. Graph facts, including Markdown-derived facts, are explicitly treated as non-citable supporting context and cannot replace source-code/test passages. If no citation-ready source-code passages survive parsing, the evaluation now fails with a diagnostic instead of saving a misleading all-zero report as `COMPLETED`.
-
-### Evidence search
-
-The existing retrieval endpoint returns Cognee `CHUNKS` evidence without asking Cognee to generate an answer:
+#### Semantic Search
 
 ```http
 POST /api/repositories/search
 Content-Type: application/json
 
 {
-  "repositoryUrl": "https://github.com/owner/repository",
+  "repositoryUrl": "`https://github.com/owner/repository",
   "query": "How does the application authenticate users?"
 }
 ```
 
-Only canonical public GitHub HTTPS repository URLs are supported. CampusCode does not scrape GitHub pages; Cognee receives the repository URL and handles ingestion. The dataset name is deterministic from the canonical repository URL.
+Retrieves relevant code passages without generating answers.
 
-### Repository knowledge graph
-
-After a repository ingestion completes, request its Cognee visualization through Spring Boot:
+#### Graph Visualization
 
 ```http
-GET /api/repositories/graph/visualization?repositoryUrl=https%3A%2F%2Fgithub.com%2Fowner%2Frepository
+GET /api/repositories/graph/visualization?repositoryUrl=<encoded-url>
 Accept: text/html
 ```
 
-Spring resolves the repository's latest completed ingestion to its Cognee dataset UUID, then fetches `/api/v1/visualize` with that UUID and full-graph mode. The Cognee URL and dataset UUID stay on the backend. The React client fetches this HTML from Spring and displays it in a sandboxed iframe. A repository without a completed ingestion returns an error instead of selecting another dataset.
+Returns HTML visualization of the repository knowledge graph.
 
-## Local email testing with Mailpit
+## Project Resources
 
-Mailpit captures email locally for development, so no Gmail account, SMTP credentials, or external delivery is needed. Add these values to your existing `.env` (copying `.env.example` again would overwrite your current settings):
+- [Complete Setup Guide](RUNNING_THE_APPLICATION.md) - Detailed Windows local setup and run instructions
+- [Frontend Implementation Plan](FRONTEND_IMPLEMENTATION_PLAN.md) - React client architecture, API mapping, and UI acceptance criteria
+- [Frontend README](frontend/client/README.md) - Client setup and development commands
+- [API Documentation](`https://documenter.getpostman.com/view/41403866/2sBYHYuy7j) - Complete API reference with examples
 
+## Development
+
+### Building from Source
+
+```powershell
+mvn clean install
+```
+
+This builds all modules, runs unit tests, and publishes artifacts to your local Maven repository.
+
+### Running the React Client
+
+Start the backend with `mvn spring-boot:run`, then in a separate terminal:
+
+```powershell
+Set-Location "C:\Users\Asus\Documents\ChatGPT\Cognee Setup\frontend\client"
+npm install
+npm run dev
+```
+
+The development server proxies `/api` requests to ``http://localhost:8080`.
+
+### Local Email Testing with Mailpit
+
+For development without external SMTP, use Mailpit:
+
+1. Add to `.env`:
 ```dotenv
 MAIL_HOST=localhost
 MAIL_PORT=1025
@@ -132,27 +251,26 @@ MAIL_SMTP_AUTH=false
 MAIL_SMTP_STARTTLS=false
 ```
 
-Start the optional Mailpit container and open its inbox:
-
+2. Start Mailpit:
 ```powershell
 docker compose --profile mail up -d mailpit
-docker compose ps mailpit
 ```
 
-Open <http://localhost:8025>. Spring Boot connects to Mailpit at `localhost:1025`. Restart CampusCode after editing `.env` so it loads the new settings.
+3. Access inbox at `http://localhost:8025
 
-To exercise the notification, create a **new ingestion** with `notificationEmail` set, wait for it to complete, then request its evaluation. CampusCode sends the notification after the evaluation report is saved. The recipient can be any address; Mailpit captures it instead of delivering it. Existing ingestions without `notificationEmail` will not send mail, and submitting a repository that already has an active or completed ingestion reuses that job, so use a different public repository for this test.
+4. Restart CampusCode to load new settings
 
-If SMTP is unset, evaluations still complete and reports remain available through the API; the log explains that no email was sent. For real external delivery later, replace the Mailpit settings with credentials and host details from an SMTP provider.
+## Troubleshooting
 
-## Troubleshooting and health
+### Health Checks
 
-- Cognee: `GET http://localhost:8000/health`
-- CampusCode: `GET http://localhost:8080/actuator/health`
-- Cognee logs: `docker compose logs -f cognee`
-- Database/Cognee startup: `docker compose ps`
+- **Cognee**: `GET `http://localhost:8000/health`
+- **CampusCode**: `GET `http://localhost:8080/actuator/health`
+- **Database status**: `docker compose ps`
 
-Cognee or Gemini errors are recorded in the associated job’s `FAILED` status and error field. Search/evaluation logs include job IDs and stage durations.
+### Logs
+
+Cognee or Gemini errors are recorded in the associated jobâ€™s `FAILED` status and error field. Search/evaluation logs include job IDs and stage durations.
 
 ## Run the React client
 
@@ -164,7 +282,7 @@ npm install
 npm run dev
 ```
 
-Open the Vite URL printed in the terminal. The development server proxies `/api` requests to `http://localhost:8080`. The first iteration supports repository submission, ingestion and evaluation progress, and saved scorecards; history and semantic search remain later work. The [frontend README](frontend/client/README.md) includes the client commands, and the [desktop submission target](frontend/design/submission-target.png) records the visual reference used for the first screen.
+Open the Vite URL printed in the terminal. The development server proxies `/api` requests to ``http://localhost:8080`. The first iteration supports repository submission, ingestion and evaluation progress, and saved scorecards; history and semantic search remain later work. The [frontend README](frontend/client/README.md) includes the client commands, and the [desktop submission target](frontend/design/submission-target.png) records the visual reference used for the first screen.
 
 ## Future work
 
@@ -174,3 +292,4 @@ Open the Vite URL printed in the terminal. The development server proxies `/api`
 See [RUNNING_THE_APPLICATION.md](RUNNING_THE_APPLICATION.md) for the complete Windows local setup and run instructions.
 
 See [FRONTEND_IMPLEMENTATION_PLAN.md](FRONTEND_IMPLEMENTATION_PLAN.md) for the Fern-inspired React client plan, current API mapping, required backend work, and UI acceptance criteria.
+

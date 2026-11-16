@@ -2,10 +2,12 @@ package com.campuscode.api;
 
 import com.campuscode.service.RepositoryMemoryService;
 import com.campuscode.service.GraphVisualizationService;
+import com.campuscode.service.RepositoryChatService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.MediaType;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,10 +20,18 @@ import java.util.UUID;
 public class RepositoryController {
     private final RepositoryMemoryService service;
     private final GraphVisualizationService graphVisualizationService;
+    private final RepositoryChatService chatService;
 
-    public RepositoryController(RepositoryMemoryService service, GraphVisualizationService graphVisualizationService) {
+    @Autowired
+    public RepositoryController(RepositoryMemoryService service, GraphVisualizationService graphVisualizationService,
+                                RepositoryChatService chatService) {
         this.service = service;
         this.graphVisualizationService = graphVisualizationService;
+        this.chatService = chatService;
+    }
+
+    public RepositoryController(RepositoryMemoryService service, GraphVisualizationService graphVisualizationService) {
+        this(service, graphVisualizationService, null);
     }
 
     @GetMapping("/")
@@ -67,6 +77,11 @@ public class RepositoryController {
     @PostMapping(value = "/ingestions/{id}/evaluations/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter evaluateStream(@PathVariable UUID id) {
         return service.streamEvaluation(id);
+    }
+
+    @PostMapping(value = "/ingestions/{id}/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter chatStream(@PathVariable UUID id, @Valid @RequestBody RepositoryChatRequest request) {
+        return chatService.stream(id, request);
     }
 
     @GetMapping("/evaluations/{id}")

@@ -68,6 +68,10 @@ campuscode:
     password: ${COGNEE_PASSWORD:${DEFAULT_USER_PASSWORD:default_password}}
   worker:
     threads: ${CAMPUSCODE_WORKER_THREADS:2}
+  chat:
+    context:
+      max-estimated-tokens: ${REPOSITORY_CHAT_CONTEXT_MAX_TOKENS:12000}
+      chars-per-token: ${REPOSITORY_CHAT_CONTEXT_CHARS_PER_TOKEN:3}
 
 logging:
   level:

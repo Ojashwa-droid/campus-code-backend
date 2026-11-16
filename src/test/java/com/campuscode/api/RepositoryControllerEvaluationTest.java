@@ -3,13 +3,14 @@ package com.campuscode.api;
 import com.campuscode.persistence.EvaluationJobEntity;
 import com.campuscode.service.RepositoryMemoryService;
 import com.campuscode.service.GraphVisualizationService;
+import com.campuscode.service.RepositoryChatService;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.Instant;
 import java.util.List;
@@ -130,5 +131,23 @@ class RepositoryControllerEvaluationTest {
         } catch (NoSuchMethodException e) {
             throw new AssertionError("Streaming evaluation route is missing", e);
         }
+    }
+
+    @Test
+    void repositoryChatUsesAnIngestionScopedSseRoute() throws Exception {
+        UUID ingestionId = UUID.randomUUID();
+        RepositoryChatService chat = mock(RepositoryChatService.class);
+        SseEmitter emitter = new SseEmitter();
+        when(chat.stream(org.mockito.ArgumentMatchers.eq(ingestionId), org.mockito.ArgumentMatchers.any()))
+                .thenReturn(emitter);
+        RepositoryController controller = new RepositoryController(service, mock(GraphVisualizationService.class), chat);
+        MockMvc chatMvc = MockMvcBuilders.standaloneSetup(controller).build();
+
+        chatMvc.perform(post("/api/repositories/ingestions/{id}/chat/stream", ingestionId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.TEXT_EVENT_STREAM)
+                        .content("{\"query\":\"How does the request flow work?\",\"history\":[]}"))
+                .andExpect(status().isOk());
+        verify(chat).stream(org.mockito.ArgumentMatchers.eq(ingestionId), org.mockito.ArgumentMatchers.any());
     }
 }
