@@ -43,7 +43,7 @@ PostgreSQL is published on localhost port 5433 to avoid conflicts with existing 
 
 ```powershell
 docker compose up -d
-Invoke-RestMethod `http://localhost:8000/health
+Invoke-RestMethod http://localhost:8000/health
 docker compose ps
 ```
 
@@ -55,7 +55,7 @@ This starts Cognee (port 8000) and PostgreSQL (port 5433). Data persists in Dock
 mvn spring-boot:run
 ```
 
-The API will be available at ``http://localhost:8080`.
+The API will be available at `http://localhost:8080`.
 
 4. **Optional: Start Cognee graph UI**
 
@@ -63,7 +63,7 @@ The API will be available at ``http://localhost:8080`.
 docker compose --profile ui up -d
 ```
 
-Access the UI at ``http://localhost:3000`.
+Access the UI at `http://localhost:3000`.
 
 For detailed setup instructions, see [RUNNING_THE_APPLICATION.md](RUNNING_THE_APPLICATION.md).
 
@@ -85,31 +85,7 @@ For detailed setup instructions, see [RUNNING_THE_APPLICATION.md](RUNNING_THE_AP
 - **Streaming Evaluation**: Real-time progress updates via Server-Sent Events (SSE)
 - **Audit Trail**: Complete evidence bundles available for inspection, including exact payloads sent to Gemini
 
-## Architecture
-
-CampusCode follows a modular architecture:
-
-```
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚   React     â”‚
-â”‚   Client    â”‚
-â””â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”˜
-       â”‚ HTTP
-â”Œâ”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”
-â”‚ Spring Boot â”‚
-â”‚   API       â”‚
-â””â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”˜
-       â”‚
-â”Œâ”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚  Cognee     â”‚â”€â”€â”€â”€â–¶â”‚ Gemini  â”‚
-â”‚  (Local)    â”‚     â”‚  API     â”‚
-â””â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”˜     â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-       â”‚
-â”Œâ”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”
-â”‚ PostgreSQL  â”‚
-â”‚  (Local)    â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-```
+## System Architecture
 
 ### Ingestion Phase
 
@@ -132,7 +108,7 @@ CampusCode follows a modular architecture:
 
 The CampusCode API provides a comprehensive set of endpoints for repository ingestion, evaluation, and retrieval. Full API documentation with examples is available at:
 
-**[CampusCode API Documentation](`https://documenter.getpostman.com/view/41403866/2sBYHYuy7j)**
+**[CampusCode API Documentation](https://documenter.getpostman.com/view/41403866/2sBYHYuy7j)**
 
 ### Key Endpoints
 
@@ -143,7 +119,7 @@ POST /api/repositories/ingestions
 Content-Type: application/json
 
 {
-  "repositoryUrl": "`https://github.com/owner/repository",
+  "repositoryUrl": "https://github.com/owner/repository",
   "notificationEmail": "optional@example.com"
 }
 ```
@@ -199,7 +175,7 @@ POST /api/repositories/search
 Content-Type: application/json
 
 {
-  "repositoryUrl": "`https://github.com/owner/repository",
+  "repositoryUrl": "https://github.com/owner/repository",
   "query": "How does the application authenticate users?"
 }
 ```
@@ -220,7 +196,7 @@ Returns HTML visualization of the repository knowledge graph.
 - [Complete Setup Guide](RUNNING_THE_APPLICATION.md) - Detailed Windows local setup and run instructions
 - [Frontend Implementation Plan](FRONTEND_IMPLEMENTATION_PLAN.md) - React client architecture, API mapping, and UI acceptance criteria
 - [Frontend README](frontend/client/README.md) - Client setup and development commands
-- [API Documentation](`https://documenter.getpostman.com/view/41403866/2sBYHYuy7j) - Complete API reference with examples
+- [API Documentation](https://documenter.getpostman.com/view/41403866/2sBYHYuy7j) - Complete API reference with examples
 
 ## Development
 
@@ -242,7 +218,7 @@ npm install
 npm run dev
 ```
 
-The development server proxies `/api` requests to ``http://localhost:8080`.
+The development server proxies `/api` requests to `http://localhost:8080`.
 
 ### Local Email Testing with Mailpit
 
@@ -264,7 +240,7 @@ MAIL_SMTP_STARTTLS=false
 docker compose --profile mail up -d mailpit
 ```
 
-3. Access inbox at `http://localhost:8025
+3. Access inbox at http://localhost:8025
 
 4. Restart CampusCode to load new settings
 
@@ -272,8 +248,8 @@ docker compose --profile mail up -d mailpit
 
 ### Health Checks
 
-- **Cognee**: `GET `http://localhost:8000/health`
-- **CampusCode**: `GET `http://localhost:8080/actuator/health`
+- **Cognee**: `GET http://localhost:8000/health`
+- **CampusCode**: `GET http://localhost:8080/actuator/health`
 - **Database status**: `docker compose ps`
 
 ### Logs
@@ -290,7 +266,7 @@ npm install
 npm run dev
 ```
 
-Open the Vite URL printed in the terminal. The development server proxies `/api` requests to ``http://localhost:8080`. The first iteration supports repository submission, ingestion and evaluation progress, and saved scorecards; history and semantic search remain later work. The [frontend README](frontend/client/README.md) includes the client commands, and the [desktop submission target](frontend/design/submission-target.png) records the visual reference used for the first screen.
+Open the Vite URL printed in the terminal. The development server proxies `/api` requests to `http://localhost:8080`. The first iteration supports repository submission, ingestion and evaluation progress, and saved scorecards; history and semantic search remain later work. The [frontend README](frontend/client/README.md) includes the client commands, and the [desktop submission target](frontend/design/submission-target.png) records the visual reference used for the first screen.
 
 ## Future work
 
