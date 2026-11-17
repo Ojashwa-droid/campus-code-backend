@@ -85,31 +85,7 @@ For detailed setup instructions, see [RUNNING_THE_APPLICATION.md](RUNNING_THE_AP
 - **Streaming Evaluation**: Real-time progress updates via Server-Sent Events (SSE)
 - **Audit Trail**: Complete evidence bundles available for inspection, including exact payloads sent to Gemini
 
-## Architecture
-
-CampusCode follows a modular architecture:
-
-```
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚   React     â”‚
-â”‚   Client    â”‚
-â””â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”˜
-       â”‚ HTTP
-â”Œâ”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”
-â”‚ Spring Boot â”‚
-â”‚   API       â”‚
-â””â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”˜
-       â”‚
-â”Œâ”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”     â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚  Cognee     â”‚â”€â”€â”€â”€â–¶â”‚ Gemini  â”‚
-â”‚  (Local)    â”‚     â”‚  API     â”‚
-â””â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”˜     â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-       â”‚
-â”Œâ”€â”€â”€â”€â”€â”€â–¼â”€â”€â”€â”€â”€â”€â”
-â”‚ PostgreSQL  â”‚
-â”‚  (Local)    â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-```
+## System Architecture
 
 ### Ingestion Phase
 
