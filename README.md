@@ -1,4 +1,4 @@
-﻿# CampusCode
+# CampusCode
 
 CampusCode is an AI-powered code evaluation platform that ingests public GitHub repositories, builds isolated knowledge graphs using local Cognee, and generates comprehensive engineering scorecards through Spring AI with Google Gemini. The system provides evidence-based assessments across architecture, maintainability, testing, reliability, security, and performance.
 
@@ -110,6 +110,14 @@ CampusCode follows a modular architecture:
 â”‚  (Local)    â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
+
+### Ingestion Phase
+
+![Ingestion Phase](.github/assets/IngestionPhase.png)
+
+### Evaluation Phase
+
+![Evaluation Phase](.github/assets/EvaluationPhase.png)
 
 **Data Flow**:
 1. React client submits repository URL to Spring Boot API
